@@ -55,6 +55,9 @@ final class GameModel {
     // MARK: Lifecycle
 
     func resize(to newSize: CGSize) {
+        // #region agent log
+        agentLogResize(old: size, new: newSize)
+        // #endregion
         guard newSize != size, newSize.width > 0, newSize.height > 0 else { return }
         size = newSize
         reset()
@@ -179,3 +182,20 @@ final class GameModel {
         }
     }
 }
+
+// #region agent log
+private func agentLogResize(old: CGSize, new: CGSize) {
+    persistAgentLog([
+        "sessionId": "3986be",
+        "runId": "post-fix",
+        "hypothesisId": "D",
+        "location": "GameModel.swift:resize",
+        "message": "game resize",
+        "data": [
+            "oldW": old.width, "oldH": old.height,
+            "newW": new.width, "newH": new.height
+        ],
+        "timestamp": Date().timeIntervalSince1970 * 1000
+    ])
+}
+// #endregion

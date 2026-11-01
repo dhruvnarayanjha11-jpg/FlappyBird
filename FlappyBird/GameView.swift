@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct GameView: View {
     @State private var model = GameModel()
@@ -25,6 +26,7 @@ struct GameView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: model.flapCount)
         .sensoryFeedback(.error, trigger: model.phase == .gameOver) { _, isOver in isOver }
         .statusBarHidden()
+        .onAppear { agentLogLayout(hypothesisId: "A", location: "GameView.swift:onAppear", message: "app appeared") }
     }
 
     private var world: some View {
@@ -55,8 +57,24 @@ struct GameView: View {
                     model.update(now: now)
                 }
             }
-            .onAppear { model.resize(to: geo.size) }
-            .onChange(of: geo.size) { _, newSize in model.resize(to: newSize) }
+            .onAppear {
+                agentLogLayout(
+                    hypothesisId: "B",
+                    location: "GameView.swift:world.onAppear",
+                    message: "geometry size",
+                    extra: ["geoW": geo.size.width, "geoH": geo.size.height]
+                )
+                model.resize(to: geo.size)
+            }
+            .onChange(of: geo.size) { _, newSize in
+                agentLogLayout(
+                    hypothesisId: "B",
+                    location: "GameView.swift:world.onChange",
+                    message: "geometry changed",
+                    extra: ["geoW": newSize.width, "geoH": newSize.height]
+                )
+                model.resize(to: newSize)
+            }
         }
     }
 
@@ -161,3 +179,43 @@ private struct GameOverCard: View {
 #Preview {
     GameView()
 }
+
+// #region agent log
+@MainActor
+private func agentLogLayout(
+    hypothesisId: String,
+    location: String,
+    message: String,
+    extra: [String: Any] = [:]
+) {
+    let screen = UIScreen.main.bounds
+    let native = UIScreen.main.nativeBounds
+    let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+    let sceneBounds = scene?.screen.bounds ?? .zero
+    var data: [String: Any] = [
+        "idiom": UIDevice.current.userInterfaceIdiom == .pad ? "pad" : (UIDevice.current.userInterfaceIdiom == .phone ? "phone" : "other"),
+        "model": UIDevice.current.model,
+        "screenW": screen.width,
+        "screenH": screen.height,
+        "nativeW": native.width,
+        "nativeH": native.height,
+        "scale": UIScreen.main.scale,
+        "windowW": sceneBounds.width,
+        "windowH": sceneBounds.height,
+        "deviceFamily": Bundle.main.object(forInfoDictionaryKey: "UIDeviceFamily") as? [Int] ?? [],
+        "iPhoneOrientations": Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String] ?? [],
+        "iPadOrientations": Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations~ipad") as? [String] ?? []
+    ]
+    extra.forEach { data[$0.key] = $0.value }
+    let payload: [String: Any] = [
+        "sessionId": "3986be",
+        "runId": "post-fix",
+        "hypothesisId": hypothesisId,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": Date().timeIntervalSince1970 * 1000
+    ]
+    
+}
+// #endregion
